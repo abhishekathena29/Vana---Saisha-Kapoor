@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "869358000910",
+    "project_id": "sustainability-app-b7733",
+    "storage_bucket": "sustainability-app-b7733.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:869358000910:android:e2a4a91fdc2959867d155f",
+        "android_client_info": {
+          "package_name": "com.vanagreen.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDgOA2LIYt1InxSGs7xhHeHulcMfnwddew"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
