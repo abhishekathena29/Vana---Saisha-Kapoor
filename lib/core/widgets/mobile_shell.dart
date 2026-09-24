@@ -41,7 +41,10 @@ class MobileShell extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 520),
           child: Stack(
             children: [
-              Positioned.fill(child: child),
+              // Keep content clear of the status bar / notch on every screen.
+              Positioned.fill(
+                child: SafeArea(bottom: false, child: child),
+              ),
               Positioned(
                 left: 0,
                 right: 0,
@@ -119,15 +122,19 @@ class _BottomNav extends StatelessWidget {
                           : AppColors.mutedForeground,
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      t.label,
-                      style: AppTextStyles.sans(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: active
-                            ? AppColors.primaryForeground
-                            : AppColors.mutedForeground,
-                        letterSpacing: 0.2,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        t.label,
+                        maxLines: 1,
+                        style: AppTextStyles.sans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: active
+                              ? AppColors.primaryForeground
+                              : AppColors.mutedForeground,
+                          letterSpacing: 0.2,
+                        ),
                       ),
                     ),
                   ],

@@ -1,5 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+
 import '../theme/app_theme.dart';
+
+/// Round back button for pushed screens; falls back to [fallback] when there
+/// is nothing to pop (e.g. the screen was opened with `context.go`).
+class AppBackButton extends StatelessWidget {
+  final String fallback;
+  final bool glass;
+  const AppBackButton({super.key, this.fallback = '/', this.glass = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => context.canPop() ? context.pop() : context.go(fallback),
+      child: Container(
+        height: 40,
+        width: 40,
+        decoration: BoxDecoration(
+          color: glass ? AppColors.background.withValues(alpha: 0.85) : AppColors.card,
+          shape: BoxShape.circle,
+          border: glass ? null : Border.all(color: AppColors.border),
+        ),
+        child: const Icon(LucideIcons.arrowLeft, size: 16, color: AppColors.foreground),
+      ),
+    );
+  }
+}
 
 /// Ported from PageHeader in src/components/MobileShell.tsx
 class PageHeader extends StatelessWidget {
@@ -89,13 +117,17 @@ class AppChip extends StatelessWidget {
             Icon(icon, size: 12, color: AppColors.primary),
             const SizedBox(width: 6),
           ],
-          Text(
-            label,
-            style: AppTextStyles.sans(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w600,
-              color: AppColors.primary,
-              letterSpacing: 0.3,
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.sans(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+                letterSpacing: 0.3,
+              ),
             ),
           ),
         ],

@@ -142,5 +142,11 @@ ThemeData buildAppTheme() {
   return base.copyWith(
     splashFactory: NoSplash.splashFactory,
     highlightColor: Colors.transparent,
+    // Float snackbars above the floating bottom nav bar instead of under it.
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      insetPadding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    ),
   );
 }

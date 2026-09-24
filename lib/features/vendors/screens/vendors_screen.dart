@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
 
-import '../provider/vendors_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/page_header.dart';
 
@@ -91,6 +89,8 @@ class _VendorsScreenState extends State<VendorsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final inCity = _vendors.where((v) => v.city == city).toList();
+
     return ListView(
       padding: const EdgeInsets.only(bottom: 120),
       children: [
@@ -139,10 +139,27 @@ class _VendorsScreenState extends State<VendorsScreen> {
           ),
         ),
         const SizedBox(height: 20),
+        if (inCity.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: CardSoft(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  const Icon(LucideIcons.mapPin, size: 18, color: AppColors.mutedForeground),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text('We are still vetting vendors in $city. Check back soon.',
+                        style: AppTextStyles.sans(fontSize: 13, color: AppColors.mutedForeground, height: 1.4)),
+                  ),
+                ],
+              ),
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
-            children: _vendors
+            children: inCity
                 .map((v) => Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: CardSoft(
@@ -222,33 +239,6 @@ class _VendorsScreenState extends State<VendorsScreen> {
                                             color: AppColors.mutedForeground,
                                             letterSpacing: 0.8)),
                                   ],
-                                ),
-                                const Spacer(),
-                                Consumer<VendorsProvider>(
-                                  builder: (context, vendors, _) {
-                                    final requested = vendors.isRequested(v.name);
-                                    return FilledButton(
-                                      onPressed: requested
-                                          ? null
-                                          : () async {
-                                              await vendors.requestQuote(vendorName: v.name, city: v.city);
-                                              if (!context.mounted) return;
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(content: Text('Quote requested from ${v.name}')),
-                                              );
-                                            },
-                                      style: FilledButton.styleFrom(
-                                        backgroundColor: requested ? AppColors.border : AppColors.primary,
-                                        foregroundColor: AppColors.primaryForeground,
-                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-                                        minimumSize: Size.zero,
-                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                      ),
-                                      child: Text(requested ? 'Requested' : 'Request quote',
-                                          style: AppTextStyles.sans(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primaryForeground)),
-                                    );
-                                  },
                                 ),
                               ],
                             ),

@@ -7,6 +7,8 @@ import '../../auth/provider/auth_provider.dart';
 import '../../favorites/provider/favorites_provider.dart';
 import '../../calculator/provider/estimates_provider.dart';
 import '../../visualize/provider/moodboards_provider.dart';
+import '../../project/models/project_item.dart';
+import '../../project/provider/project_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/page_header.dart';
 
@@ -19,6 +21,7 @@ class ProfileScreen extends StatelessWidget {
     final favoritesCount = context.watch<FavoritesProvider>().ids.length;
     final estimates = context.watch<EstimatesProvider>().items;
     final moodboardsCount = context.watch<MoodboardsProvider>().items.length;
+    final project = context.watch<ProjectProvider>();
 
     final user = auth.currentUser;
     final name = auth.displayName;
@@ -47,9 +50,12 @@ class ProfileScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(name, style: AppTextStyles.display(fontSize: 18)),
+                      Text(name, style: AppTextStyles.display(fontSize: 18), maxLines: 1, overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 2),
-                      Text(user?.email ?? '', style: AppTextStyles.sans(fontSize: 12.5, color: AppColors.mutedForeground)),
+                      Text(user?.email ?? '',
+                          style: AppTextStyles.sans(fontSize: 12.5, color: AppColors.mutedForeground),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
                     ],
                   ),
                 ),
@@ -68,6 +74,42 @@ class ProfileScreen extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(child: _StatCard(icon: LucideIcons.sparkles, label: 'Moodboards', value: '$moodboardsCount')),
             ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: GestureDetector(
+            onTap: () => context.push('/project'),
+            child: CardSoft(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    height: 40,
+                    width: 40,
+                    decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.08), shape: BoxShape.circle),
+                    child: const Icon(LucideIcons.clipboardList, size: 18, color: AppColors.primary),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('My project', style: AppTextStyles.sans(fontSize: 14, fontWeight: FontWeight.w600)),
+                        Text(
+                          project.items.isEmpty
+                              ? 'Start adding materials and plants'
+                              : '${project.items.length} items · ₹${formatInr(project.totalCost)} estimated',
+                          style: AppTextStyles.sans(fontSize: 12, color: AppColors.mutedForeground),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(LucideIcons.arrowRight, size: 16, color: AppColors.mutedForeground),
+                ],
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 28),
@@ -98,13 +140,15 @@ class ProfileScreen extends StatelessWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('${e['space']} · ${e['sqft']} sqft', style: AppTextStyles.sans(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                                    Text('${e['space']} · ${e['sqft']} sqft',
+                                        style: AppTextStyles.sans(fontSize: 13.5, fontWeight: FontWeight.w600)),
                                     Text('${e['flooring']} floor · ${e['wall']} walls · ${e['plantsCount']} plants',
                                         style: AppTextStyles.sans(fontSize: 11, color: AppColors.mutedForeground)),
                                   ],
                                 ),
                               ),
-                              Text('₹${(e['total'] as num).round()}',
+                              const SizedBox(width: 8),
+                              Text('₹${formatInr(e['total'] as num)}',
                                   style: AppTextStyles.sans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.clay)),
                             ],
                           ),
@@ -154,7 +198,10 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(value, style: AppTextStyles.display(fontSize: 18)),
           const SizedBox(height: 2),
-          Text(label, style: AppTextStyles.sans(fontSize: 10.5, color: AppColors.mutedForeground), textAlign: TextAlign.center),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(label, style: AppTextStyles.sans(fontSize: 10.5, color: AppColors.mutedForeground), maxLines: 1),
+          ),
         ],
       ),
     );

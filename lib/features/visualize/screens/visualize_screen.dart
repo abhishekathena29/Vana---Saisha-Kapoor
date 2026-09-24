@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -27,10 +29,55 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   String style = 'Biophilic';
   String space = 'Living';
   final noteCtrl = TextEditingController(text: 'I want it to feel calm and earthy.');
+  final _noteFocus = FocusNode();
+  final _scrollCtrl = ScrollController();
+  List<String> previews = List.of(_previewImages);
+  bool generating = false;
+  bool savingAll = false;
+
+  @override
+  void dispose() {
+    noteCtrl.dispose();
+    _noteFocus.dispose();
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  /// Prototype "render": reshuffles the preview set after a short delay.
+  Future<void> _generate() async {
+    if (generating) return;
+    setState(() => generating = true);
+    await Future<void>.delayed(const Duration(milliseconds: 900));
+    if (!mounted) return;
+    setState(() {
+      previews = List.of(previews)..shuffle(Random());
+      generating = false;
+    });
+  }
+
+  void _adjust() {
+    _scrollCtrl.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+    _noteFocus.requestFocus();
+  }
+
+  Future<void> _saveAll() async {
+    setState(() => savingAll = true);
+    final boards = context.read<MoodboardsProvider>();
+    var ok = true;
+    for (var i = 0; i < previews.length; i++) {
+      ok = await boards.saveMoodboard(style: style, space: space, note: noteCtrl.text, variation: i + 1) && ok;
+    }
+    if (!mounted) return;
+    setState(() => savingAll = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? 'All 4 moodboards saved to your profile' : 'Some moodboards could not be saved.')),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return ListView(
+      controller: _scrollCtrl,
       padding: const EdgeInsets.only(bottom: 120),
       children: [
         const PageHeader(
@@ -111,6 +158,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
                 ),
                 child: TextField(
                   controller: noteCtrl,
+                  focusNode: _noteFocus,
                   maxLines: 2,
                   style: AppTextStyles.sans(fontSize: 14),
                   decoration: const InputDecoration(
@@ -143,15 +191,23 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
                       ],
                     ),
                   ),
-                  Container(
-                    height: 40,
-                    width: 40,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.border),
-                      color: AppColors.card,
-                      shape: BoxShape.circle,
+                  GestureDetector(
+                    onTap: _generate,
+                    child: Container(
+                      height: 40,
+                      width: 40,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppColors.border),
+                        color: AppColors.card,
+                        shape: BoxShape.circle,
+                      ),
+                      child: generating
+                          ? const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                            )
+                          : const Icon(LucideIcons.refreshCw, size: 16, color: AppColors.foreground),
                     ),
-                    child: const Icon(LucideIcons.refreshCw, size: 16, color: AppColors.foreground),
                   ),
                 ],
               ),
@@ -159,7 +215,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: _previewImages.length,
+                itemCount: previews.length,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   mainAxisSpacing: 12,
@@ -172,7 +228,11 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        Image.asset(_previewImages[i], fit: BoxFit.cover),
+                        AnimatedOpacity(
+                          opacity: generating ? 0.35 : 1,
+                          duration: const Duration(milliseconds: 250),
+                          child: Image.asset(previews[i], fit: BoxFit.cover),
+                        ),
                         DecoratedBox(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
@@ -239,9 +299,9 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
                 child: DecoratedBox(
                   decoration: BoxDecoration(gradient: AppColors.gradientLeaf, borderRadius: BorderRadius.circular(999), boxShadow: AppShadows.lift),
                   child: TextButton.icon(
-                    onPressed: () {},
+                    onPressed: generating ? null : _generate,
                     icon: const Icon(LucideIcons.sparkles, size: 16, color: Colors.white),
-                    label: Text('Generate 4 new moodboards',
+                    label: Text(generating ? 'Generating…' : 'Generate 4 new moodboards',
                         style: AppTextStyles.sans(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
                     style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 15)),
                   ),
@@ -252,7 +312,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () {},
+                      onPressed: _adjust,
                       icon: const Icon(LucideIcons.wand2, size: 16),
                       label: const Text('Adjust'),
                       style: OutlinedButton.styleFrom(
@@ -268,9 +328,9 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () {},
+                      onPressed: savingAll ? null : _saveAll,
                       icon: const Icon(LucideIcons.download, size: 16),
-                      label: const Text('Download PDF'),
+                      label: Text(savingAll ? 'Saving…' : 'Save all 4'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.foreground,
                         side: const BorderSide(color: AppColors.border),

@@ -54,6 +54,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   void _showImageSourceSheet() {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         margin: const EdgeInsets.all(12),
@@ -76,6 +77,23 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _confirmNewChat() async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: Text('Start a new chat?', style: AppTextStyles.display(fontSize: 20)),
+        content: Text('This clears the current conversation.',
+            style: AppTextStyles.sans(fontSize: 13, color: AppColors.mutedForeground)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('New chat')),
+        ],
+      ),
+    );
+    if (yes == true && mounted) await context.read<ChatProvider>().clear();
   }
 
   Future<void> _send([String? presetText]) async {
@@ -123,6 +141,16 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                   ],
                 ),
               ),
+              if (messages.isNotEmpty)
+                TextButton.icon(
+                  onPressed: thinking ? null : _confirmNewChat,
+                  icon: const Icon(LucideIcons.squarePen, size: 15),
+                  label: const Text('New chat'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    textStyle: AppTextStyles.sans(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ),
             ],
           ),
         ),
@@ -132,9 +160,13 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
               : ListView.builder(
                   controller: _scrollCtrl,
                   padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
-                  itemCount: messages.length + (thinking ? 1 : 0),
+                  itemCount: messages.length + (thinking || chat.awaitingReply ? 1 : 0),
                   itemBuilder: (context, i) {
-                    if (i == messages.length) return const _ThinkingBubble();
+                    if (i == messages.length) {
+                      return thinking
+                          ? const _ThinkingBubble()
+                          : _RetryBubble(onRetry: () => context.read<ChatProvider>().retry());
+                    }
                     return _MessageBubble(message: messages[i]);
                   },
                 ),
@@ -234,8 +266,12 @@ class _MessageBubble extends StatelessWidget {
     final isUser = message.role == ChatRole.user;
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
+      child: FractionallySizedBox(
+        widthFactor: 0.82,
+        alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+        child: Align(
+        alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
@@ -269,6 +305,47 @@ class _MessageBubble extends StatelessWidget {
             Text(
               message.text,
               style: AppTextStyles.sans(fontSize: 14, height: 1.45, color: isUser ? AppColors.primaryForeground : AppColors.foreground),
+            ),
+          ],
+        ),
+      ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RetryBubble extends StatelessWidget {
+  final VoidCallback onRetry;
+  const _RetryBubble({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.fromLTRB(16, 6, 6, 6),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          border: Border.all(color: AppColors.border),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text('No reply yet', style: AppTextStyles.sans(fontSize: 13, color: AppColors.mutedForeground)),
+            ),
+            const SizedBox(width: 4),
+            TextButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(LucideIcons.refreshCw, size: 14),
+              label: const Text('Retry'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                textStyle: AppTextStyles.sans(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
             ),
           ],
         ),
@@ -360,10 +437,11 @@ class _Composer extends StatelessWidget {
             ),
           Row(
             children: [
-              IconButton(
-                onPressed: sending ? null : onAttach,
-                icon: const Icon(LucideIcons.paperclip, size: 20, color: AppColors.primary),
-              ),
+              // file attaching option
+              // IconButton(
+              //   onPressed: sending ? null : onAttach,
+              //   icon: const Icon(LucideIcons.paperclip, size: 20, color: AppColors.primary),
+              // ),
               Expanded(
                 child: TextField(
                   controller: textCtrl,

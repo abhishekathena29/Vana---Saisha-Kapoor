@@ -78,6 +78,8 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     final labour = materialTotal * 0.35;
     final total = materialTotal + labour;
     final conventional = total * 1.22;
+    // Option tiles: two text lines + padding, scaled with the system font size.
+    final tileExtent = MediaQuery.textScalerOf(context).scale(40) + 22;
 
     return ListView(
       padding: const EdgeInsets.only(bottom: 120),
@@ -169,7 +171,14 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                         children: [
                           Text('Area',
                               style: AppTextStyles.sans(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.mutedForeground)),
-                          Text('$sqft sqft', style: AppTextStyles.display(fontSize: 20)),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerRight,
+                              child: Text('$sqft sqft', style: AppTextStyles.display(fontSize: 20)),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -195,13 +204,15 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                   children: [
                     _SubLabel('Flooring'),
                     const SizedBox(height: 8),
-                    GridView.count(
-                      crossAxisCount: 2,
+                    GridView(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      mainAxisSpacing: 8,
-                      crossAxisSpacing: 8,
-                      childAspectRatio: 2.6,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 8,
+                        crossAxisSpacing: 8,
+                        mainAxisExtent: tileExtent,
+                      ),
                       children: _flooringOptions
                           .map((o) => _PillPick(
                                 active: flooring.id == o.id,
@@ -214,13 +225,15 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                     const SizedBox(height: 16),
                     _SubLabel('Walls'),
                     const SizedBox(height: 8),
-                    GridView.count(
-                      crossAxisCount: 3,
+                    GridView(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      mainAxisSpacing: 8,
-                      crossAxisSpacing: 8,
-                      childAspectRatio: 1.5,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        mainAxisSpacing: 8,
+                        crossAxisSpacing: 8,
+                        mainAxisExtent: tileExtent,
+                      ),
                       children: _wallOptions
                           .map((o) => _PillPick(
                                 active: wall.id == o.id,
@@ -286,8 +299,12 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                         color: Colors.white.withValues(alpha: 0.7),
                         letterSpacing: 2)),
                 const SizedBox(height: 8),
-                Text('₹${_fmt(total)}',
-                    style: AppTextStyles.display(fontSize: 40, fontWeight: FontWeight.w600, color: Colors.white, height: 1)),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text('₹${_fmt(total)}',
+                      style: AppTextStyles.display(fontSize: 40, fontWeight: FontWeight.w600, color: Colors.white, height: 1)),
+                ),
                 const SizedBox(height: 4),
                 Text('≈ ₹${_fmt(total / sqft)} per sqft · incl. labour',
                     style: AppTextStyles.sans(fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
@@ -433,7 +450,8 @@ class _PillPick extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(title, style: AppTextStyles.sans(fontSize: 13, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
-            Text(sub, style: AppTextStyles.sans(fontSize: 10, color: AppColors.mutedForeground)),
+            Text(sub,
+                style: AppTextStyles.sans(fontSize: 10, color: AppColors.mutedForeground), maxLines: 1, overflow: TextOverflow.ellipsis),
           ],
         ),
       ),
@@ -453,7 +471,7 @@ class _ResultRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: AppTextStyles.sans(fontSize: 14, color: Colors.white.withValues(alpha: 0.8))),
+          Expanded(child: Text(label, style: AppTextStyles.sans(fontSize: 14, color: Colors.white.withValues(alpha: 0.8)))),
           Text('₹${_fmt(value)}',
               style: AppTextStyles.sans(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
         ],

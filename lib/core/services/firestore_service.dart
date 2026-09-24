@@ -111,17 +111,36 @@ class FirestoreService {
   }
 
   // ---------------------------------------------------------------------
-  // Vendor quote requests
+  // My project (materials + plants the user plans to use, per room)
   // ---------------------------------------------------------------------
 
-  CollectionReference<Map<String, dynamic>> get _quoteRequests => _userDoc.collection('quoteRequests');
+  CollectionReference<Map<String, dynamic>> get _projectItems => _userDoc.collection('projectItems');
 
-  Future<void> requestQuote({required String vendorName, required String city}) {
-    return _quoteRequests.add({
-      'vendorName': vendorName,
-      'city': city,
-      'createdAt': FieldValue.serverTimestamp(),
+  Stream<List<Map<String, dynamic>>> projectItemsStream() {
+    if (_uid == null) return Stream.value(const []);
+    return _projectItems.orderBy('addedAt').snapshots().map(
+          (s) => s.docs.map((d) => {'id': d.id, ...d.data()}).toList(),
+        );
+  }
+
+  Future<void> setProjectItems(Map<String, Map<String, dynamic>> itemsById) {
+    final batch = _db.batch();
+    itemsById.forEach((id, data) {
+      batch.set(_projectItems.doc(id), {...data, 'addedAt': FieldValue.serverTimestamp()});
     });
+    return batch.commit();
+  }
+
+  Future<void> updateProjectItem(String id, Map<String, dynamic> data) {
+    return _projectItems.doc(id).update(data);
+  }
+
+  Future<void> removeProjectItems(Iterable<String> ids) {
+    final batch = _db.batch();
+    for (final id in ids) {
+      batch.delete(_projectItems.doc(id));
+    }
+    return batch.commit();
   }
 
   // ---------------------------------------------------------------------
@@ -132,6 +151,15 @@ class FirestoreService {
 
   Future<void> addChatMessage(ChatMessage message) {
     return _chatMessages.add(message.toMap());
+  }
+
+  Future<void> clearChatMessages() async {
+    final docs = await _chatMessages.get();
+    final batch = _db.batch();
+    for (final d in docs.docs) {
+      batch.delete(d.reference);
+    }
+    await batch.commit();
   }
 
   Stream<List<ChatMessage>> chatMessagesStream() {

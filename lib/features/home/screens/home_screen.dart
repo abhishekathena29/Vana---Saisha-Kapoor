@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../materials/models/material_item.dart';
 import '../../plants/models/plant.dart';
 import '../../auth/provider/auth_provider.dart';
+import '../../stories/models/design_story.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_icon_badge.dart';
 import '../../../core/widgets/leaf_score.dart';
@@ -17,6 +18,9 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hero = designStories.first;
+    final stories = designStories.skip(1).toList();
+
     return ListView(
       padding: const EdgeInsets.only(bottom: 120),
       children: [
@@ -28,29 +32,38 @@ class HomeScreen extends StatelessWidget {
             children: [
               const AppIconBadge(size: 32),
               const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'VANA',
-                    style: AppTextStyles.sans(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.clay,
-                      letterSpacing: 2.2,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'VANA',
+                      style: AppTextStyles.sans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.clay,
+                        letterSpacing: 2.2,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Namaste, ${context.watch<AuthProvider>().displayName}',
-                    style: AppTextStyles.sans(
-                      fontSize: 14,
-                      color: AppColors.mutedForeground,
+                    const SizedBox(height: 2),
+                    Text(
+                      'Namaste, ${context.watch<AuthProvider>().displayName}',
+                      style: AppTextStyles.sans(
+                        fontSize: 14,
+                        color: AppColors.mutedForeground,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
+              _RoundIconButton(
+                icon: LucideIcons.clipboardList,
+                onTap: () => context.push('/project'),
+              ),
+              const SizedBox(width: 8),
               _RoundIconButton(
                 icon: LucideIcons.search,
                 onTap: () => context.go('/materials'),
@@ -67,114 +80,124 @@ class HomeScreen extends StatelessWidget {
         // Hero
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(28),
-            child: Stack(
-              children: [
-                Container(
-                  decoration: const BoxDecoration(boxShadow: AppShadows.lift),
-                  child: Image.asset(
-                    'assets/images/hero-living.jpg',
-                    height: 440,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
+          child: GestureDetector(
+            onTap: () => context.push('/stories/${hero.id}'),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: Image.asset(hero.image, fit: BoxFit.cover),
                   ),
-                ),
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: const BoxDecoration(
-                      gradient: AppColors.gradientHero,
+                  const Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: AppColors.gradientHero,
+                      ),
                     ),
                   ),
-                ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                LucideIcons.sparkles,
-                                size: 12,
-                                color: Colors.white,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'DESIGN STORY',
-                                style: AppTextStyles.sans(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
+                  // Content drives the height, so long titles or large text
+                  // grow the card instead of overflowing it.
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      minHeight: 420,
+                      minWidth: double.infinity,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  LucideIcons.sparkles,
+                                  size: 12,
                                   color: Colors.white,
-                                  letterSpacing: 1.2,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'DESIGN STORY',
+                                  style: AppTextStyles.sans(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            hero.title,
+                            style: AppTextStyles.display(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                              height: 1.05,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 260),
+                            child: Text(
+                              hero.subtitle,
+                              style: AppTextStyles.sans(
+                                fontSize: 13,
+                                color: Colors.white.withValues(alpha: 0.85),
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    _GlassPill(
+                                      label: '${hero.budget} estimated',
+                                    ),
+                                    _GlassPill(label: '${hero.carbonCut} CO₂'),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                height: 40,
+                                width: 40,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.clay,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  LucideIcons.arrowUpRight,
+                                  size: 18,
+                                  color: AppColors.clayForeground,
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'A Delhi flat that breathes with the seasons',
-                          style: AppTextStyles.display(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                            height: 1.05,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 260),
-                          child: Text(
-                            'Bamboo floors, lime walls and 14 air-purifying plants for 620 sqft.',
-                            style: AppTextStyles.sans(
-                              fontSize: 13,
-                              color: Colors.white.withValues(alpha: 0.85),
-                              height: 1.4,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            _GlassPill(label: '₹4.2L estimated'),
-                            const SizedBox(width: 8),
-                            _GlassPill(label: '−38% CO₂'),
-                            const Spacer(),
-                            Container(
-                              height: 40,
-                              width: 40,
-                              decoration: const BoxDecoration(
-                                color: AppColors.clay,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                LucideIcons.arrowUpRight,
-                                size: 18,
-                                color: AppColors.clayForeground,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -245,7 +268,7 @@ class HomeScreen extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 216,
+          height: 118 + MediaQuery.textScalerOf(context).scale(112),
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -267,44 +290,45 @@ class HomeScreen extends StatelessWidget {
                           width: double.infinity,
                           fit: BoxFit.cover,
                         ),
-                        Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                m.category.toUpperCase(),
-                                style: AppTextStyles.sans(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.mutedForeground,
-                                  letterSpacing: 1.2,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                m.name,
-                                style: AppTextStyles.display(fontSize: 17),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  LeafScore(score: m.carbon),
-                                  Text(
-                                    m.priceRange.split(' ').first,
-                                    style: AppTextStyles.sans(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.clay,
-                                    ),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.all(14),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  m.category.toUpperCase(),
+                                  style: AppTextStyles.sans(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.mutedForeground,
+                                    letterSpacing: 1.2,
                                   ),
-                                ],
-                              ),
-                            ],
+                                ),
+                                Text(
+                                  m.name,
+                                  style: AppTextStyles.display(fontSize: 17),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    LeafScore(score: m.carbon),
+                                    Text(
+                                      m.priceRange.split(' ').first,
+                                      style: AppTextStyles.sans(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.clay,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -350,6 +374,7 @@ class HomeScreen extends StatelessWidget {
                       ],
                     ),
                   ),
+                  const SizedBox(width: 8),
                   const AppChip(label: 'Filters 4 toxins'),
                 ],
               ),
@@ -362,40 +387,46 @@ class HomeScreen extends StatelessWidget {
                       children: plants
                           .map(
                             (p) => Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                ),
-                                child: Column(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(16),
-                                      child: AspectRatio(
-                                        aspectRatio: 4 / 5,
-                                        child: Image.asset(
-                                          p.image,
-                                          fit: BoxFit.cover,
+                              child: GestureDetector(
+                                onTap: () => context.push('/plants'),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(16),
+                                        child: AspectRatio(
+                                          aspectRatio: 4 / 5,
+                                          child: Image.asset(
+                                            p.image,
+                                            fit: BoxFit.cover,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      p.name,
-                                      textAlign: TextAlign.center,
-                                      style: AppTextStyles.display(
-                                        fontSize: 13,
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        p.name,
+                                        textAlign: TextAlign.center,
+                                        style: AppTextStyles.display(
+                                          fontSize: 13,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    Text(
-                                      p.light,
-                                      style: AppTextStyles.sans(
-                                        fontSize: 10,
-                                        color: AppColors.mutedForeground,
+                                      Text(
+                                        p.light,
+                                        textAlign: TextAlign.center,
+                                        style: AppTextStyles.sans(
+                                          fontSize: 10,
+                                          color: AppColors.mutedForeground,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -406,7 +437,7 @@ class HomeScreen extends StatelessWidget {
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton(
-                        onPressed: () {},
+                        onPressed: () => context.push('/air-kit'),
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: AppColors.primaryForeground,
@@ -448,7 +479,7 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               Text(
-                '2 new',
+                '${stories.length} new',
                 style: AppTextStyles.sans(
                   fontSize: 12,
                   color: AppColors.mutedForeground,
@@ -462,19 +493,14 @@ class HomeScreen extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             children: [
-              _StoryCard(
-                image: 'assets/images/story-bedroom.jpg',
-                tag: 'Bedroom · Pune',
-                title: 'The 100-year-old teak bed that anchors a modern room',
-                meta: '6 min read',
-              ),
-              const SizedBox(height: 12),
-              _StoryCard(
-                image: 'assets/images/story-kitchen.jpg',
-                tag: 'Kitchen · Bengaluru',
-                title: 'A bamboo kitchen that grows its own herbs',
-                meta: 'Before & After',
-              ),
+              for (final story in stories)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _StoryCard(
+                    story: story,
+                    onTap: () => context.push('/stories/${story.id}'),
+                  ),
+                ),
             ],
           ),
         ),
@@ -601,87 +627,83 @@ class _QuickAction extends StatelessWidget {
 }
 
 class _StoryCard extends StatelessWidget {
-  final String image;
-  final String tag;
-  final String title;
-  final String meta;
+  final DesignStory story;
+  final VoidCallback onTap;
 
-  const _StoryCard({
-    required this.image,
-    required this.tag,
-    required this.title,
-    required this.meta,
-  });
+  const _StoryCard({required this.story, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return CardSoft(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              Image.asset(
-                image,
-                height: 192,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
-              Positioned(
-                left: 12,
-                top: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.background.withValues(alpha: 0.85),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    tag.toUpperCase(),
-                    style: AppTextStyles.sans(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1.1,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return GestureDetector(
+      onTap: onTap,
+      child: CardSoft(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
               children: [
-                Text(
-                  title,
-                  style: AppTextStyles.display(fontSize: 18, height: 1.25),
+                Image.asset(
+                  story.image,
+                  height: 192,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      meta,
+                Positioned(
+                  left: 12,
+                  top: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.background.withValues(alpha: 0.85),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      story.tag.toUpperCase(),
                       style: AppTextStyles.sans(
-                        fontSize: 11,
-                        color: AppColors.mutedForeground,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1.1,
                       ),
                     ),
-                    const Icon(
-                      LucideIcons.arrowUpRight,
-                      size: 16,
-                      color: AppColors.clay,
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    story.title,
+                    style: AppTextStyles.display(fontSize: 18, height: 1.25),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        story.meta,
+                        style: AppTextStyles.sans(
+                          fontSize: 11,
+                          color: AppColors.mutedForeground,
+                        ),
+                      ),
+                      const Icon(
+                        LucideIcons.arrowUpRight,
+                        size: 16,
+                        color: AppColors.clay,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

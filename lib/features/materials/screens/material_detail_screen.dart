@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../models/material_item.dart';
 import '../../favorites/provider/favorites_provider.dart';
+import '../../project/provider/project_provider.dart';
+import '../../project/widgets/add_to_project_sheet.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/leaf_score.dart';
 import '../../../core/widgets/page_header.dart';
@@ -82,7 +85,9 @@ class _MaterialDetailScreenState extends State<MaterialDetailScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _RoundGlassButton(icon: LucideIcons.arrowLeft, onTap: () => context.go('/materials')),
+                    _RoundGlassButton(
+                        icon: LucideIcons.arrowLeft,
+                        onTap: () => context.canPop() ? context.pop() : context.go('/materials')),
                     Row(
                       children: [
                         Consumer<FavoritesProvider>(
@@ -100,7 +105,16 @@ class _MaterialDetailScreenState extends State<MaterialDetailScreen> {
                           },
                         ),
                         const SizedBox(width: 8),
-                        _RoundGlassButton(icon: LucideIcons.share2, onTap: () {}),
+                        _RoundGlassButton(
+                          icon: LucideIcons.share2,
+                          onTap: () async {
+                            await Clipboard.setData(ClipboardData(
+                                text: '${material.name} (${material.priceRange}) — ${material.description}\nFound on Vana.'));
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(const SnackBar(content: Text('Material details copied to clipboard')));
+                          },
+                        ),
                       ],
                     ),
                   ],
@@ -143,8 +157,12 @@ class _MaterialDetailScreenState extends State<MaterialDetailScreen> {
                     ),
                   )),
               Text('Palette', style: AppTextStyles.sans(fontSize: 11, color: AppColors.mutedForeground)),
-              const Spacer(),
-              Text(m.priceRange, style: AppTextStyles.sans(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.clay)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(m.priceRange,
+                    textAlign: TextAlign.right,
+                    style: AppTextStyles.sans(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.clay)),
+              ),
             ],
           ),
         ),
@@ -161,7 +179,8 @@ class _MaterialDetailScreenState extends State<MaterialDetailScreen> {
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
           child: Row(
             children: [
-              Expanded(child: _SpecCard(icon: LucideIcons.wind, label: 'Carbon', child: LeafScore(score: m.carbon, size: 12))),
+              Expanded(child: _SpecCard(icon: LucideIcons.wind, label: 'Carbon', child: FittedBox(
+                      fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: LeafScore(score: m.carbon, size: 12)))),
               const SizedBox(width: 8),
               Expanded(
                   child: _SpecCard(
@@ -266,40 +285,94 @@ class _MaterialDetailScreenState extends State<MaterialDetailScreen> {
         // CTA
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 32, 20, 0),
-          child: Column(
-            children: [
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(LucideIcons.plus, size: 16),
-                  label: const Text('Add to my project'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: AppColors.primaryForeground,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-                    textStyle: AppTextStyles.sans(fontSize: 14, fontWeight: FontWeight.w600),
+          child: Consumer<ProjectProvider>(
+            builder: (context, project, _) {
+              final added = project.itemsForRef(material.id);
+              if (added.isEmpty) {
+                return SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () => showAddMaterialSheet(context, material),
+                    icon: const Icon(LucideIcons.plus, size: 16),
+                    label: const Text('Add to my project'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.primaryForeground,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                      textStyle: AppTextStyles.sans(fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.foreground,
-                    side: const BorderSide(color: AppColors.border),
-                    backgroundColor: AppColors.card,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                );
+              }
+              return Column(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.leaf.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.leaf.withValues(alpha: 0.25)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(LucideIcons.check, size: 16, color: AppColors.leaf),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'In your project · ${added.map((i) => '${i.room} (${i.sqft} sqft)').join(', ')}',
+                            style: AppTextStyles.sans(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.primary),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Text('Find vendors near me',
-                      style: AppTextStyles.sans(fontSize: 14, fontWeight: FontWeight.w600)),
-                ),
-              ),
-            ],
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () => context.push('/project'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: AppColors.primaryForeground,
+                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                            textStyle: AppTextStyles.sans(fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                          child: const Text('View project'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => showAddMaterialSheet(context, material),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.foreground,
+                            side: const BorderSide(color: AppColors.border),
+                            backgroundColor: AppColors.card,
+                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                            textStyle: AppTextStyles.sans(fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                          child: const Text('Add another room'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      final ok = await project.remove(added.map((i) => i.id).toList());
+                      if (!context.mounted) return;
+                      showProjectSnack(context, ok, '${material.name} removed from your project');
+                    },
+                    child: Text('Remove from project',
+                        style: AppTextStyles.sans(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.destructive)),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ],

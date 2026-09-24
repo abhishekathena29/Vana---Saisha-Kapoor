@@ -11,6 +11,7 @@ class Plant {
   final List<String> rooms;
   final String size; // "Small" | "Medium" | "Large"
   final int care; // 1-5
+  final int price; // ₹ per potted plant
 
   const Plant({
     required this.id,
@@ -24,6 +25,7 @@ class Plant {
     required this.rooms,
     required this.size,
     required this.care,
+    required this.price,
   });
 }
 
@@ -40,6 +42,7 @@ const plants = <Plant>[
     rooms: ['Living room', 'Study'],
     size: 'Large',
     care: 2,
+    price: 1200,
   ),
   Plant(
     id: 'snake-plant',
@@ -53,6 +56,7 @@ const plants = <Plant>[
     rooms: ['Bedroom', 'Bathroom'],
     size: 'Small',
     care: 1,
+    price: 450,
   ),
   Plant(
     id: 'monstera',
@@ -66,6 +70,7 @@ const plants = <Plant>[
     rooms: ['Living room', 'Study'],
     size: 'Medium',
     care: 2,
+    price: 900,
   ),
 ];
 

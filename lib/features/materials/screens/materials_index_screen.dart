@@ -19,12 +19,187 @@ class MaterialsIndexScreen extends StatefulWidget {
 }
 
 const _categories = ['All', 'Flooring', 'Walls', 'Ceiling', 'Furniture'];
+const _sorts = [
+  'Recommended',
+  'Price: low to high',
+  'Price: high to low',
+  'Longest lasting',
+];
 
 class _MaterialsIndexScreenState extends State<MaterialsIndexScreen> {
   String active = 'All';
   String openSpace = spaces.first.id;
   final _searchCtrl = TextEditingController();
   String query = '';
+  String sort = _sorts.first;
+  bool zeroVocOnly = false;
+  bool lowCarbonOnly = false;
+
+  bool get _hasFilters => sort != _sorts.first || zeroVocOnly || lowCarbonOnly;
+
+  List<catalog.MaterialItem> _applyFilters(List<catalog.MaterialItem> list) {
+    final out = list
+        .where((m) => !zeroVocOnly || m.voc == 'None')
+        .where((m) => !lowCarbonOnly || m.carbon >= 5)
+        .toList();
+    int life(catalog.MaterialItem m) =>
+        int.tryParse(RegExp(r'\d+').firstMatch(m.durability)?.group(0) ?? '') ??
+        0;
+    switch (sort) {
+      case 'Price: low to high':
+        out.sort(
+          (a, b) =>
+              _parsePriceMid(a.priceRange)
+                  .compareTo(_parsePriceMid(b.priceRange)),
+        );
+      case 'Price: high to low':
+        out.sort(
+          (a, b) =>
+              _parsePriceMid(b.priceRange)
+                  .compareTo(_parsePriceMid(a.priceRange)),
+        );
+      case 'Longest lasting':
+        out.sort((a, b) => life(b).compareTo(life(a)));
+    }
+    return out;
+  }
+
+  Future<void> _openFilters() async {
+    await showModalBottomSheet<void>(
+      context: context,
+    // Root navigator draws the sheet above the floating bottom nav bar.
+    useRootNavigator: true,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheet) {
+          void update(VoidCallback fn) {
+            setState(fn);
+            setSheet(() {});
+          }
+
+          return SafeArea(
+            child: Container(
+              margin: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Sort & filter',
+                            style: AppTextStyles.display(fontSize: 20),
+                          ),
+                        ),
+                        if (_hasFilters)
+                          TextButton(
+                            onPressed: () => update(() {
+                              sort = _sorts.first;
+                              zeroVocOnly = false;
+                              lowCarbonOnly = false;
+                            }),
+                            child: const Text('Reset'),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'SORT BY',
+                      style: AppTextStyles.sans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.mutedForeground,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _sorts
+                          .map(
+                            (o) => _Pill(
+                              label: o,
+                              active: sort == o,
+                              onTap: () => update(() => sort = o),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                    const SizedBox(height: 12),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      activeTrackColor: AppColors.primary,
+                      value: zeroVocOnly,
+                      onChanged: (v) => update(() => zeroVocOnly = v),
+                      title: Text(
+                        'Zero-VOC only',
+                        style: AppTextStyles.sans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      subtitle: Text(
+                        'Nothing off-gasses into your room',
+                        style: AppTextStyles.sans(
+                          fontSize: 12,
+                          color: AppColors.mutedForeground,
+                        ),
+                      ),
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      activeTrackColor: AppColors.primary,
+                      value: lowCarbonOnly,
+                      onChanged: (v) => update(() => lowCarbonOnly = v),
+                      title: Text(
+                        'Top carbon score only',
+                        style: AppTextStyles.sans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '5 of 5 leaves',
+                        style: AppTextStyles.sans(
+                          fontSize: 12,
+                          color: AppColors.mutedForeground,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: () => Navigator.of(sheetContext).pop(),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: AppColors.primaryForeground,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                        child: const Text('Show results'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -38,15 +213,17 @@ class _MaterialsIndexScreenState extends State<MaterialsIndexScreen> {
         ? catalog.materials
         : catalog.materials.where((m) => m.category == active).toList();
     final q = query.trim().toLowerCase();
-    final filtered = q.isEmpty
-        ? byCategory
-        : byCategory
-              .where(
-                (m) =>
-                    m.name.toLowerCase().contains(q) ||
-                    m.category.toLowerCase().contains(q),
-              )
-              .toList();
+    final filtered = _applyFilters(
+      q.isEmpty
+          ? byCategory
+          : byCategory
+                .where(
+                  (m) =>
+                      m.name.toLowerCase().contains(q) ||
+                      m.category.toLowerCase().contains(q),
+                )
+                .toList(),
+    );
     final space = spaceById(openSpace);
 
     return ListView(
@@ -59,63 +236,75 @@ class _MaterialsIndexScreenState extends State<MaterialsIndexScreen> {
         ),
 
         // Search bar
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            decoration: BoxDecoration(
-              border: Border.all(color: AppColors.border),
-              color: AppColors.card,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  LucideIcons.search,
-                  size: 16,
-                  color: AppColors.mutedForeground,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _searchCtrl,
-                    onChanged: (v) => setState(() => query = v),
-                    style: AppTextStyles.sans(fontSize: 14),
-                    decoration: InputDecoration(
-                      border: InputBorder.none,
-                      hintText: 'Search bamboo, cork, lime...',
-                      hintStyle: AppTextStyles.sans(
-                        fontSize: 14,
-                        color: AppColors.mutedForeground,
-                      ),
-                    ),
-                  ),
-                ),
-                if (query.isNotEmpty)
-                  GestureDetector(
-                    onTap: () => setState(() {
-                      _searchCtrl.clear();
-                      query = '';
-                    }),
-                    child: const Icon(
-                      LucideIcons.x,
-                      size: 16,
-                      color: AppColors.mutedForeground,
-                    ),
-                  )
-                else
-                  const Icon(
-                    LucideIcons.slidersHorizontal,
-                    size: 16,
-                    color: AppColors.clay,
-                  ),
-              ],
-            ),
-          ),
-        ),
+        // Padding(
+        //   padding: const EdgeInsets.symmetric(horizontal: 20),
+        //   child: Container(
+        //     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        //     decoration: BoxDecoration(
+        //       border: Border.all(color: AppColors.border),
+        //       color: AppColors.card,
+        //       borderRadius: BorderRadius.circular(999),
+        //     ),
+        //     child: Row(
+        //       children: [
+        //         const Icon(
+        //           LucideIcons.search,
+        //           size: 16,
+        //           color: AppColors.mutedForeground,
+        //         ),
+        //         const SizedBox(width: 8),
+        //         Expanded(
+        //           child: TextField(
+        //             controller: _searchCtrl,
+        //             onChanged: (v) => setState(() => query = v),
+        //             style: AppTextStyles.sans(fontSize: 14),
+        //             decoration: InputDecoration(
+        //               border: InputBorder.none,
+        //               hintText: 'Search bamboo, cork, lime...',
+        //               hintStyle: AppTextStyles.sans(
+        //                 fontSize: 14,
+        //                 color: AppColors.mutedForeground,
+        //               ),
+        //             ),
+        //           ),
+        //         ),
+        //         if (query.isNotEmpty)
+        //           GestureDetector(
+        //             onTap: () => setState(() {
+        //               _searchCtrl.clear();
+        //               query = '';
+        //             }),
+        //             child: const Icon(
+        //               LucideIcons.x,
+        //               size: 16,
+        //               color: AppColors.mutedForeground,
+        //             ),
+        //           )
+        //         else
+        //           GestureDetector(
+        //             onTap: _openFilters,
+        //             behavior: HitTestBehavior.opaque,
+        //             child: Padding(
+        //               padding: const EdgeInsets.all(6),
+        //               child: Badge(
+        //                 isLabelVisible: _hasFilters,
+        //                 smallSize: 7,
+        //                 backgroundColor: AppColors.primary,
+        //                 child: const Icon(
+        //                   LucideIcons.slidersHorizontal,
+        //                   size: 16,
+        //                   color: AppColors.clay,
+        //                 ),
+        //               ),
+        //             ),
+        //           ),
+        //       ],
+        //     ),
+        //   ),
+        // ),
 
-        // Redesign your space
-        const SizedBox(height: 28),
+        // // Redesign your space
+        // const SizedBox(height: 28),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
@@ -208,7 +397,9 @@ class _MaterialsIndexScreenState extends State<MaterialsIndexScreen> {
             padding: const EdgeInsets.fromLTRB(20, 32, 20, 0),
             child: Center(
               child: Text(
-                'No materials match "$query".',
+                query.isEmpty
+                    ? 'No materials match these filters.'
+                    : 'No materials match "$query".',
                 style: AppTextStyles.sans(
                   fontSize: 13,
                   color: AppColors.mutedForeground,
@@ -219,112 +410,126 @@ class _MaterialsIndexScreenState extends State<MaterialsIndexScreen> {
         else
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-            child: GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: filtered.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 0.6,
-              ),
-              itemBuilder: (context, i) {
-                final m = filtered[i];
-                return GestureDetector(
-                  onTap: () => context.go('/materials/${m.id}'),
-                  child: CardSoft(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Stack(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final columns = constraints.maxWidth >= 600 ? 3 : 2;
+                final tileWidth =
+                    (constraints.maxWidth - 12 * (columns - 1)) / columns;
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: filtered.length,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: columns,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    // Square image + text block that grows with the font size.
+                    mainAxisExtent:
+                        tileWidth + MediaQuery.textScalerOf(context).scale(96),
+                  ),
+                  itemBuilder: (context, i) {
+                    final m = filtered[i];
+                    return GestureDetector(
+                      onTap: () => context.go('/materials/${m.id}'),
+                      child: CardSoft(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            AspectRatio(
-                              aspectRatio: 1,
-                              child: Image.asset(m.image, fit: BoxFit.cover),
+                            Stack(
+                              children: [
+                                AspectRatio(
+                                  aspectRatio: 1,
+                                  child: Image.asset(
+                                    m.image,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                                Positioned(
+                                  left: 8,
+                                  top: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.background.withValues(
+                                        alpha: 0.85,
+                                      ),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text(
+                                      m.category.toUpperCase(),
+                                      style: AppTextStyles.sans(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 1,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            Positioned(
-                              left: 8,
-                              top: 8,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.background.withValues(
-                                    alpha: 0.85,
-                                  ),
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Text(
-                                  m.category.toUpperCase(),
-                                  style: AppTextStyles.sans(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 1,
-                                  ),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          m.name,
+                                          style: AppTextStyles.display(
+                                            fontSize: 15,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          m.priceRange,
+                                          style: AppTextStyles.sans(
+                                            fontSize: 11,
+                                            color: AppColors.mutedForeground,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        LeafScore(score: m.carbon, size: 12),
+                                        Flexible(
+                                          child: Text(
+                                            m.durability,
+                                            style: AppTextStyles.sans(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w500,
+                                              color: AppColors.mutedForeground,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      m.name,
-                                      style: AppTextStyles.display(
-                                        fontSize: 15,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      m.priceRange,
-                                      style: AppTextStyles.sans(
-                                        fontSize: 11,
-                                        color: AppColors.mutedForeground,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    LeafScore(score: m.carbon, size: 12),
-                                    Flexible(
-                                      child: Text(
-                                        m.durability,
-                                        style: AppTextStyles.sans(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w500,
-                                          color: AppColors.mutedForeground,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
@@ -639,48 +844,46 @@ class _SpaceCardState extends State<_SpaceCard> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      SizedBox(
-                        height: 44,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: mats.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 8),
-                          itemBuilder: (context, i) {
-                            final m = mats[i];
-                            return GestureDetector(
-                              onTap: () => context.go('/materials/${m.id}'),
-                              child: Container(
-                                padding: const EdgeInsets.only(
-                                  left: 4,
-                                  right: 12,
-                                  top: 4,
-                                  bottom: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: AppColors.border),
-                                  color: AppColors.card,
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    ClipOval(
-                                      child: Image.asset(
-                                        m.image,
-                                        height: 28,
-                                        width: 28,
-                                        fit: BoxFit.cover,
-                                      ),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: mats.map((m) {
+                          return GestureDetector(
+                            onTap: () => context.go('/materials/${m.id}'),
+                            child: Container(
+                              padding: const EdgeInsets.only(
+                                left: 4,
+                                right: 12,
+                                top: 4,
+                                bottom: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: AppColors.border),
+                                color: AppColors.card,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ClipOval(
+                                    child: Image.asset(
+                                      m.image,
+                                      height: 28,
+                                      width: 28,
+                                      fit: BoxFit.cover,
                                     ),
-                                    const SizedBox(width: 8),
-                                    Column(
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Flexible(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
                                       children: [
                                         Text(
                                           m.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                           style: AppTextStyles.sans(
                                             fontSize: 12,
                                             fontWeight: FontWeight.w600,
@@ -688,6 +891,8 @@ class _SpaceCardState extends State<_SpaceCard> {
                                         ),
                                         Text(
                                           m.priceRange,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                           style: AppTextStyles.sans(
                                             fontSize: 9,
                                             color: AppColors.mutedForeground,
@@ -695,12 +900,12 @@ class _SpaceCardState extends State<_SpaceCard> {
                                         ),
                                       ],
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
-                            );
-                          },
-                        ),
+                            ),
+                          );
+                        }).toList(),
                       ),
                     ],
                   ),
@@ -747,25 +952,32 @@ class _SpaceCardState extends State<_SpaceCard> {
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      p.name,
-                                      style: AppTextStyles.sans(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
+                                Flexible(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        p.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: AppTextStyles.sans(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
-                                    ),
-                                    Text(
-                                      '${p.light} · ${p.water}',
-                                      style: AppTextStyles.sans(
-                                        fontSize: 9,
-                                        color: AppColors.mutedForeground,
+                                      Text(
+                                        '${p.light} · ${p.water}',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: AppTextStyles.sans(
+                                          fontSize: 9,
+                                          color: AppColors.mutedForeground,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
@@ -877,11 +1089,15 @@ class _SpaceImpact extends StatelessWidget {
                   ),
                 ),
               ),
-              Text(
-                '~$area sqft · ${space.moves.length} moves',
-                style: AppTextStyles.sans(
-                  fontSize: 10,
-                  color: AppColors.mutedForeground,
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  '~$area sqft · ${space.moves.length} moves',
+                  textAlign: TextAlign.right,
+                  style: AppTextStyles.sans(
+                    fontSize: 10,
+                    color: AppColors.mutedForeground,
+                  ),
                 ),
               ),
             ],
@@ -907,21 +1123,29 @@ class _SpaceImpact extends StatelessWidget {
                             color: AppColors.leaf,
                           ),
                           const SizedBox(width: 6),
-                          Text(
-                            'CARBON SAVED',
-                            style: AppTextStyles.sans(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.leaf,
-                              letterSpacing: 1,
+                          Flexible(
+                            child: Text(
+                              'CARBON SAVED',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.sans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.leaf,
+                                letterSpacing: 1,
+                              ),
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        '$carbonPct%',
-                        style: AppTextStyles.display(fontSize: 22, height: 1),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          '$carbonPct%',
+                          style: AppTextStyles.display(fontSize: 22, height: 1),
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -956,9 +1180,13 @@ class _SpaceImpact extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        _fmtRupee(total),
-                        style: AppTextStyles.display(fontSize: 22, height: 1),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          _fmtRupee(total),
+                          style: AppTextStyles.display(fontSize: 22, height: 1),
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -1071,13 +1299,16 @@ class _ImpactRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: AppTextStyles.sans(
-              fontSize: 12,
-              color: AppColors.mutedForeground,
+          Expanded(
+            child: Text(
+              label,
+              style: AppTextStyles.sans(
+                fontSize: 12,
+                color: AppColors.mutedForeground,
+              ),
             ),
           ),
+          const SizedBox(width: 8),
           Text(
             value,
             style: AppTextStyles.sans(

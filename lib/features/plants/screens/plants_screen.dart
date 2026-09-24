@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
@@ -27,6 +28,10 @@ class _PlantsScreenState extends State<PlantsScreen> {
     return ListView(
       padding: const EdgeInsets.only(bottom: 120),
       children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(20, 24, 20, 0),
+          child: Align(alignment: Alignment.centerLeft, child: AppBackButton()),
+        ),
         const PageHeader(
           eyebrow: 'Air kit',
           title: 'Plants that clean your air',
@@ -61,7 +66,35 @@ class _PlantsScreenState extends State<PlantsScreen> {
             },
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: GestureDetector(
+            onTap: () => context.push('/air-kit'),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(gradient: AppColors.gradientLeaf, borderRadius: BorderRadius.circular(20)),
+              child: Row(
+                children: [
+                  const Icon(LucideIcons.sprout, size: 20, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Build my air kit', style: AppTextStyles.display(fontSize: 17, color: Colors.white)),
+                        Text('Get a plant mix sized for your room',
+                            style: AppTextStyles.sans(fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
+                      ],
+                    ),
+                  ),
+                  const Icon(LucideIcons.arrowUpRight, size: 18, color: Colors.white),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
@@ -94,7 +127,6 @@ class _PlantsScreenState extends State<PlantsScreen> {
                                               ],
                                             ),
                                           ),
-                                          if (p.petSafe) const AppChip(label: 'Pet safe', icon: LucideIcons.footprints),
                                           const SizedBox(width: 6),
                                           Consumer<FavoritesProvider>(
                                             builder: (context, favorites, _) {
@@ -119,20 +151,18 @@ class _PlantsScreenState extends State<PlantsScreen> {
                                       Wrap(
                                         spacing: 6,
                                         runSpacing: 6,
-                                        children: p.filters.take(2).map((f) => _FilterTag(label: f)).toList(),
+                                        children: [
+                                          if (p.petSafe) const AppChip(label: 'Pet safe', icon: LucideIcons.footprints),
+                                          ...p.filters.take(2).map((f) => _FilterTag(label: f)),
+                                        ],
                                       ),
                                       const SizedBox(height: 8),
-                                      Row(
+                                      Wrap(
+                                        spacing: 12,
+                                        runSpacing: 4,
                                         children: [
-                                          const Icon(LucideIcons.sun, size: 12, color: AppColors.mutedForeground),
-                                          const SizedBox(width: 4),
-                                          Text(p.light,
-                                              style: AppTextStyles.sans(fontSize: 11, color: AppColors.mutedForeground)),
-                                          const SizedBox(width: 12),
-                                          const Icon(LucideIcons.droplet, size: 12, color: AppColors.mutedForeground),
-                                          const SizedBox(width: 4),
-                                          Text(p.water,
-                                              style: AppTextStyles.sans(fontSize: 11, color: AppColors.mutedForeground)),
+                                          _Meta(icon: LucideIcons.sun, label: p.light),
+                                          _Meta(icon: LucideIcons.droplet, label: p.water),
                                         ],
                                       ),
                                     ],
@@ -147,6 +177,24 @@ class _PlantsScreenState extends State<PlantsScreen> {
                 .toList(),
           ),
         ),
+      ],
+    );
+  }
+}
+
+class _Meta extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _Meta({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: AppColors.mutedForeground),
+        const SizedBox(width: 4),
+        Flexible(child: Text(label, style: AppTextStyles.sans(fontSize: 11, color: AppColors.mutedForeground))),
       ],
     );
   }

@@ -24,6 +24,10 @@ class ChatProvider extends ChangeNotifier {
   bool thinking = false;
   String? error;
 
+  /// The last message is the user's and no reply is on its way — e.g. the
+  /// previous request failed, or the app was closed mid-request.
+  bool get awaitingReply => !thinking && _messages.isNotEmpty && _messages.last.role == ChatRole.user;
+
   void _resubscribe() {
     _dataSub?.cancel();
     _messages = const [];
@@ -63,12 +67,47 @@ class ChatProvider extends ChangeNotifier {
 
     try {
       await FirestoreService.instance.addChatMessage(userMessage);
-      final reply = await GroqService.instance.chat(history: _messages, prompt: trimmed, imageBytes: image);
-      await FirestoreService.instance.addChatMessage(ChatMessage(id: '', role: ChatRole.assistant, text: reply));
+      await _reply(_messages, trimmed, image);
     } catch (e) {
       error = e is GroqException ? e.message : 'Something went wrong. Please try again.';
     } finally {
       thinking = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _reply(List<ChatMessage> history, String prompt, Uint8List? image) async {
+    final reply = await GroqService.instance.chat(history: history, prompt: prompt, imageBytes: image);
+    await FirestoreService.instance.addChatMessage(ChatMessage(id: '', role: ChatRole.assistant, text: reply));
+  }
+
+  /// Asks again for a reply to the last unanswered user message.
+  Future<void> retry() async {
+    if (!awaitingReply) return;
+    final last = _messages.last;
+    error = null;
+    thinking = true;
+    notifyListeners();
+    try {
+      // The photo itself is not stored, so a retried photo message is text-only.
+      await _reply(_messages.sublist(0, _messages.length - 1), last.text, null);
+    } catch (e) {
+      error = e is GroqException ? e.message : 'Something went wrong. Please try again.';
+    } finally {
+      thinking = false;
+      notifyListeners();
+    }
+  }
+
+  /// Deletes the saved conversation so the starter prompts show again.
+  Future<void> clear() async {
+    error = null;
+    pendingImage = null;
+    notifyListeners();
+    try {
+      await FirestoreService.instance.clearChatMessages();
+    } catch (_) {
+      error = 'Could not clear the chat. Please try again.';
       notifyListeners();
     }
   }

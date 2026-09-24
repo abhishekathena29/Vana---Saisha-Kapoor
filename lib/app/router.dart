@@ -16,6 +16,9 @@ import '../features/calculator/screens/calculator_screen.dart';
 import '../features/visualize/screens/visualize_screen.dart';
 import '../features/ai_assistant/screens/ai_assistant_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
+import '../features/plants/screens/air_kit_screen.dart';
+import '../features/project/screens/project_screen.dart';
+import '../features/stories/screens/story_screen.dart';
 
 const _publicPaths = {'/welcome', '/login', '/signup'};
 
@@ -60,6 +63,12 @@ GoRouter buildRouter(AuthProvider authProvider) {
           GoRoute(path: '/visualize', builder: (context, state) => const VisualizeScreen()),
           GoRoute(path: '/ai', builder: (context, state) => const AiAssistantScreen()),
           GoRoute(path: '/profile', builder: (context, state) => const ProfileScreen()),
+          GoRoute(path: '/air-kit', builder: (context, state) => const AirKitScreen()),
+          GoRoute(path: '/project', builder: (context, state) => const ProjectScreen()),
+          GoRoute(
+            path: '/stories/:id',
+            builder: (context, state) => StoryScreen(id: state.pathParameters['id']!),
+          ),
         ],
       ),
     ],
